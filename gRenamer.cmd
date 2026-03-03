@@ -28,14 +28,14 @@ $LangDict = @{
         "Title"="gRenam Remover"; "Dev"="Developed by IT Groceries Shop™ ♥ ♥ ♥"; 
         "Facebook"="Facebook"; "GitHub"="GitHub"; "About"="About"; "Exit"="EXIT"; 
         "Processing"="Scanning..."; "Finished"="Completed"; "Start"="START SCAN";
-        "LangLabel"="Language"; "Refresh"="REFRESH"; "SaveCMD"="SAVE .CMD";
+        "LangLabel"="Language"; "Refresh"="REFRESH"; "SaveCMD"="SAVE .PS1";
         "AdvMode"="Advance Mode: Recover hidden orphaned files"
     }
     "TH" = @{ 
         "Title"="กำจัดไวรัส Grenam"; "Dev"="พัฒนาโดย IT Groceries Shop™ ♥ ♥ ♥"; 
         "Facebook"="Facebook"; "GitHub"="GitHub"; "About"="เกี่ยวกับ"; "Exit"="ออก"; 
         "Processing"="กำลังสแกน..."; "Finished"="เสร็จสิ้น"; "Start"="เริ่มการสแกน";
-        "LangLabel"="ภาษา"; "Refresh"="รีเฟรช"; "SaveCMD"="สร้างไฟล์ .cmd";
+        "LangLabel"="ภาษา"; "Refresh"="รีเฟรช"; "SaveCMD"="สร้างไฟล์ .ps1";
         "AdvMode"="โหมดขั้นสูง: กู้คืนไฟล์ซ่อนที่ไม่มีตัวปลอม (Orphaned)"
     }
 }
@@ -250,7 +250,7 @@ try {
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
                     <Button x:Name="BA" Content="START SCAN" Width="260" Height="50" Background="#2E7D32" Foreground="White" Style="{StaticResource Btn}" Cursor="Hand" FontSize="18" Margin="0,0,10,0"/>
-                    <Button x:Name="BSave" Content="SAVE .CMD" Width="100" Height="50" Background="#F57C00" Foreground="White" Style="{StaticResource Btn}" Cursor="Hand" FontSize="14" Margin="0,0,10,0"/>
+                    <Button x:Name="BSave" Content="SAVE .PS1" Width="100" Height="50" Background="#F57C00" Foreground="White" Style="{StaticResource Btn}" Cursor="Hand" FontSize="14" Margin="0,0,10,0"/>
                     <Button x:Name="BRefresh" Width="100" Height="50" Background="#1976D2" Foreground="White" Style="{StaticResource Btn}" Cursor="Hand"><StackPanel Orientation="Horizontal"><Path Fill="White" Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="18" Height="18" Stretch="Uniform" Margin="0,0,5,0"/><TextBlock x:Name="T_Refresh" Text="REFRESH" VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/></StackPanel></Button>
                 </StackPanel>
             </Grid>
@@ -381,8 +381,8 @@ try {
     $BSave.Add_Click({
         Play-Sound "Click"
         $sfd = New-Object System.Windows.Forms.SaveFileDialog
-        $sfd.Filter = "Command Script (*.cmd)|*.cmd"
-        $sfd.FileName = "gRenam_Remover_V5.cmd"
+        $sfd.Filter = "PowerShell Script (*.ps1)|*.ps1"
+        $sfd.FileName = "gRenam_Remover_V5.ps1"
         $sfd.Title = "Save Offline Version"
         
         if ($sfd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
