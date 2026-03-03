@@ -4,23 +4,23 @@ chcp 65001 >nul
 mode con:cols=85 lines=20
 title gRenam Remover by IT Groceries Shop
 
-:: Force UTF8 encoding to prevent execution failure
+:: บังคับอ่านเป็น UTF8 เพื่อรองรับไฟล์ที่เกิดจากการกด Save
 powershell -noprofile -c "$param='%*';$ScriptPath='%~f0';iex((Get-Content -LiteralPath '%~f0' -Encoding UTF8 -Raw))"
 exit /b
 #>
 
 # =========================================================
 #  GRENAM REMOVER ULTIMATE
-#  Version: 5.0 Build 04.03.2026 (Final Release)
+#  Version: 5.0 Build 04.03.2026 (The PS1 Transformation)
 #  Framework: IT Groceries Shop (Layout Master)
 # =========================================================
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
-$AppVersion = "5.0 Build 04.03.2026"
+$AppVersion = "4.3 Build 04.03.2026"
 $InstallDir = "$env:LOCALAPPDATA\ITG_gRenamer"
 
-# GitHub Raw URL for remote execution and downloading
+# ลิงก์ต้นฉบับบน GitHub
 $SelfURL    = "https://raw.githubusercontent.com/itgroceries-sudo/gRenamer/main/gRenamer.cmd"
 
 $LangDict = @{
@@ -40,6 +40,33 @@ $LangDict = @{
     }
 }
 
+function Load-ScanTargets {
+    $IconSys = "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z"
+    $IconUSB = "M15,7V11H16V13H13V5L15,3V1H9V3L11,5V13H8V11H9V7H4V11H5V15L9,19V21H15V19L19,15V11H20V7H15Z"
+    $IconCus = "M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
+
+    $arr = @()
+    $arr += @{ ID="SYS"; Path="$env:SystemDrive\"; Icon=$IconSys; DescEN="Scan System Drive ($env:SystemDrive\)"; DescTH="สแกนไดรฟ์ระบบ ($env:SystemDrive\)" }
+
+    $drives = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Removable' -and $_.IsReady }
+    foreach ($d in $drives) {
+        $dl = $d.Name.Substring(0,2)
+        $vl = $d.VolumeLabel
+        $arr += @{ ID="USB_$dl"; Path="$dl\"; Icon=$IconUSB; DescEN="Scan USB Drive ($dl $vl)"; DescTH="สแกนแฟลชไดรฟ์ ($dl $vl)" }
+    }
+
+    $cusPath = ""
+    if ($Global:ScanTargets) {
+        $existingCUS = $Global:ScanTargets | Where-Object { $_.ID -eq "CUS" }
+        if ($existingCUS) { $cusPath = $existingCUS.Path }
+    }
+    $arr += @{ ID="CUS"; Path=$cusPath; Icon=$IconCus; DescEN="Select Custom Folder..."; DescTH="เลือกโฟลเดอร์ที่ต้องการสแกน..." }
+    
+    $Global:ScanTargets = $arr
+}
+
+Load-ScanTargets
+
 $SysRegion = (Get-Culture).TwoLetterISOLanguageName
 $script:CurrentLang = if ($SysRegion -eq "th") { "TH" } else { "EN" }
 
@@ -53,7 +80,7 @@ try {
 } catch {}
 
 # ---------------------------------------------------------
-# [1] ELEVATION LOGIC
+# [1] ELEVATION LOGIC: หลบการด่าของ CMD ด้วยการแปลงร่างเป็น .PS1 
 # ---------------------------------------------------------
 $Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $Principal = [Security.Principal.WindowsPrincipal]$Identity
@@ -72,22 +99,26 @@ if (-not $Silent -and -not $IsAdmin) {
     $null = Read-Host
     
     try {
+        # ดึง Path ต้นฉบับมาให้ชัวร์
         $SourcePath = if ($ScriptPath -and (Test-Path -LiteralPath $ScriptPath)) { $ScriptPath } elseif ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) { $PSCommandPath } else { $null }
         
         if ($SourcePath) {
-            Start-Process "cmd.exe" -ArgumentList "/c `"$SourcePath`"" -Verb RunAs
+            $ScriptContent = Get-Content -LiteralPath $SourcePath -Raw
         } else {
-            Write-Host "`n [INFO] Memory Execution Detected. Preparing Elevation..." -ForegroundColor Yellow
+            Write-Host "`n [INFO] Memory Execution Detected. Downloading..." -ForegroundColor Yellow
             $WebClient = New-Object System.Net.WebClient
             $WebClient.Encoding = [System.Text.Encoding]::UTF8
             $ScriptContent = $WebClient.DownloadString($SelfURL)
-            
-            $TempScript = "$env:TEMP\gRenamer_Elevate.ps1"
-            $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
-            [System.IO.File]::WriteAllText($TempScript, $ScriptContent, $Utf8WithBom)
-            
-            Start-Process "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$TempScript`"" -Verb RunAs
         }
+
+        # ท่าไม้ตาย: ไม่ว่ารันมาจากไหน จับยัดลง Temp เปลี่ยนนามสกุลเป็น .ps1 ซะ!
+        $TempScript = "$env:TEMP\gRenamer_Elevate.ps1"
+        $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
+        [System.IO.File]::WriteAllText($TempScript, $ScriptContent, $Utf8WithBom)
+        
+        # สั่งรัน PowerShell ตรงๆ โบกมือลาปัญหาหน้าต่างดำดับวับ 100%
+        Start-Process "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$TempScript`"" -Verb RunAs
+        
     } catch { 
         Write-Host "`n [ERROR] Failed to elevate: $_" -ForegroundColor Red
         Start-Sleep 5
@@ -131,33 +162,11 @@ try {
 
     $host.UI.RawUI.BackgroundColor = "Black"; $host.UI.RawUI.ForegroundColor = "Gray"; Clear-Host
     Write-Host "`n==========================================" -ForegroundColor Green
-    Write-Host "   (V.5.0 Build 04.03.2026 : INIT)      " -ForegroundColor Green
+    Write-Host "   (V.4.3 Build 04.03.2026 : INIT)      " -ForegroundColor Green
     Write-Host "==========================================" -ForegroundColor Green
     Write-Host " [INFO] Loading Modules and Layout..." -ForegroundColor Green
 
     function Play-Sound($Type) { try { switch ($Type) { "Click" { [System.Media.SystemSounds]::Beep.Play() } "Tick" { [System.Console]::Beep(2000, 20) } "Warn" { [System.Media.SystemSounds]::Hand.Play() } "Done" { [System.Media.SystemSounds]::Asterisk.Play() } } } catch {} }
-
-    function Load-ScanTargets {
-        $IconSys = "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z"
-        $IconUSB = "M15,7V11H16V13H13V5L15,3V1H9V3L11,5V13H8V11H9V7H4V11H5V15L9,19V21H15V19L19,15V11H20V7H15Z"
-        $IconCus = "M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
-        $arr = @()
-        $arr += @{ ID="SYS"; Path="$env:SystemDrive\"; Icon=$IconSys; DescEN="Scan System Drive ($env:SystemDrive\)"; DescTH="สแกนไดรฟ์ระบบ ($env:SystemDrive\)" }
-        $drives = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Removable' -and $_.IsReady }
-        foreach ($d in $drives) {
-            $dl = $d.Name.Substring(0,2); $vl = $d.VolumeLabel
-            $arr += @{ ID="USB_$dl"; Path="$dl\"; Icon=$IconUSB; DescEN="Scan USB Drive ($dl $vl)"; DescTH="สแกนแฟลชไดรฟ์ ($dl $vl)" }
-        }
-        $cusPath = ""
-        if ($Global:ScanTargets) {
-            $existingCUS = $Global:ScanTargets | Where-Object { $_.ID -eq "CUS" }
-            if ($existingCUS) { $cusPath = $existingCUS.Path }
-        }
-        $arr += @{ ID="CUS"; Path=$cusPath; Icon=$IconCus; DescEN="Select Custom Folder..."; DescTH="เลือกโฟลเดอร์ที่ต้องการสแกน..." }
-        $Global:ScanTargets = $arr
-    }
-
-    Load-ScanTargets
 
     if(!$Silent){ Write-Host " [INFO] Launching WPF GUI..." -ForegroundColor Yellow }
 
@@ -367,7 +376,7 @@ try {
     Update-Language; Update-StartButton
 
     # =========================================================
-    # EXPORT SCRIPT (.CMD) LOGIC
+    # ระบบ SAVE โคตรฉลาด: ดึงตัวล่าสุด และบันทึกเป็น BOM ป้องกันเอ๋อ
     # =========================================================
     $BSave.Add_Click({
         Play-Sound "Click"
@@ -390,7 +399,6 @@ try {
                     $ScriptContent = $WebClient.DownloadString($SelfURL)
                 }
 
-                # Write file using UTF-8 with BOM signature
                 $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
                 [System.IO.File]::WriteAllText($sfd.FileName, $ScriptContent, $Utf8WithBom)
                 
