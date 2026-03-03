@@ -82,7 +82,7 @@ if (-not $Silent -and -not $IsAdmin) {
             $WebClient.Encoding = [System.Text.Encoding]::UTF8
             $ScriptContent = $WebClient.DownloadString($SelfURL)
             
-            $TempScript = "$env:TEMP\gRenamer_Elevate.cmd"
+            $TempScript = "$env:TEMP\gRenamer_Elevate.ps1"
             $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
             [System.IO.File]::WriteAllText($TempScript, $ScriptContent, $Utf8WithBom)
             
