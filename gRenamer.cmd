@@ -17,7 +17,7 @@ exit /b
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
-$AppVersion = "4.3 Build 04.03.2026"
+$AppVersion = "5.0 Build 04.03.2026"
 $InstallDir = "$env:LOCALAPPDATA\ITG_gRenamer"
 
 # ลิงก์ต้นฉบับบน GitHub
