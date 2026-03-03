@@ -18,8 +18,8 @@ exit /b
 
 $AppVersion = "3.0 Build 04.03.2026"
 $InstallDir = "$env:LOCALAPPDATA\ITG_gRenamer"
-$TempScript = "$env:TEMP\gRenamer_Temp.ps1"
-$SelfURL    = "https://raw.githubusercontent.com/itgroceries-sudo/gRenamer/main/gRenamer.ps1"
+$TempScript = "$env:TEMP\gRenamer_Temp.cmd"
+$SelfURL    = "https://raw.githubusercontent.com/itgroceries-sudo/gRenamer/main/gRenamer.cmd"
 $TargetFile = if ($ScriptPath) { $ScriptPath } elseif ($PSScriptRoot) { $PSCommandPath } else { $null }
 
 function Write-SafeTempScript {
