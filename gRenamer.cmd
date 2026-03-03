@@ -75,7 +75,7 @@ if (-not $Silent -and -not $IsAdmin) {
         $SourcePath = if ($ScriptPath -and (Test-Path -LiteralPath $ScriptPath)) { $ScriptPath } elseif ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) { $PSCommandPath } else { $null }
         
         if ($SourcePath) {
-            Start-Process "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$TempScript`"" -Verb RunAs
+            Start-Process "cmd.exe" -ArgumentList "/c `"$TempScript`"" -Verb RunAs
         } else {
             Write-Host "`n [INFO] Memory Execution Detected. Preparing Elevation..." -ForegroundColor Yellow
             $WebClient = New-Object System.Net.WebClient
@@ -86,7 +86,7 @@ if (-not $Silent -and -not $IsAdmin) {
             $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
             [System.IO.File]::WriteAllText($TempScript, $ScriptContent, $Utf8WithBom)
             
-            Start-Process "cmd.exe" -ArgumentList "/c `"$TempScript`"" -Verb RunAs
+            Start-Process "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$TempScript`"" -Verb RunAs
         }
     } catch { 
         Write-Host "`n [ERROR] Failed to elevate: $_" -ForegroundColor Red
