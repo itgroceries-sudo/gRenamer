@@ -6,7 +6,7 @@
 
 ---
 # #ตำนานที่ยังมีลมหายใน    (ตัวแก้)   #ไวรัสเปลี่ยนชื่อไฟล์ 
-<img width="1245" height="749" alt="image" src="https://github.com/user-attachments/assets/33122d86-d1ee-46a2-9a54-2688d45c8a15" />
+<img width="1242" height="750" alt="image" src="https://github.com/user-attachments/assets/af93963b-e81e-4caf-bee2-37aefac9eebf" />
 
 ---
 
