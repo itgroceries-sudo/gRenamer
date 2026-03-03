@@ -83,13 +83,22 @@ try {
     $ConsoleHandle = [Win32.User32]::GetConsoleWindow()
 } catch {}
 
+# [3] ELEVATION LOGIC
 $Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $Principal = [Security.Principal.WindowsPrincipal]$Identity
 $IsAdmin = $Principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-if (-not $Silent -and -not $IsAdmin) {
+if (-not $IsAdmin) {
     if ($ConsoleHandle) { [Win32.User32]::ShowWindow($ConsoleHandle, 5) | Out-Null }
-    try { $host.UI.RawUI.WindowSize = New-Object System.Management.Automation.Host.Size(80, 20) } catch {} 
+    $ScriptContent = Get-Content -Path $PSCommandPath -Raw
+    
+    try {
+        Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"& { $ScriptContent }`"" -Verb RunAs
+    } catch {
+        Write-Host " [ERROR] Failed to elevate: $_" -ForegroundColor Red
+    }
+    exit 
+}
 
     $host.UI.RawUI.BackgroundColor = "Black"; $host.UI.RawUI.ForegroundColor = "White"; Clear-Host
     Write-Host "`n================================================================================" -ForegroundColor DarkGray
