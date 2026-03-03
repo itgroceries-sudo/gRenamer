@@ -18,8 +18,8 @@ exit /b
 
 $AppVersion = "2.6 Build 03.03.2026"
 $InstallDir = "$env:LOCALAPPDATA\ITG_gRenamer"
-$TempScript = "$env:TEMP\gRenamer_Temp.ps1"
-$SelfURL    = "https://raw.githubusercontent.com/itgroceries-sudo/gRenamer/main/gRenamer.ps1"
+$TempScript = "$env:TEMP\gRenamer_Temp.cmd"
+$SelfURL    = "https://raw.githubusercontent.com/itgroceries-sudo/gRenamer/main/gRenamer.cmd"
 $TargetFile = if ($ScriptPath) { $ScriptPath } elseif ($PSScriptRoot) { $PSCommandPath } else { $null }
 
 function Write-SafeTempScript {
@@ -363,7 +363,7 @@ Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStart
 
     $BFollow.Add_Click({ Start-Process "https://www.youtube.com/c/itgroceries?sub_confirmation=1"; Play-Sound "Click" })
     $BF.Add_Click({ Start-Process "https://www.facebook.com/Adm1n1straTOE"; Play-Sound "Click" })
-    $BG.Add_Click({ Start-Process "https://github.com/itgroceries-sudo"; Play-Sound "Click" }) 
+    $BG.Add_Click({ Start-Process "https://github.com/itgroceries-sudo/gRenamer"; Play-Sound "Click" }) 
     $BAbt.Add_Click({ Play-Sound "Click"; [System.Windows.MessageBox]::Show("gRenam Remover`nVersion: $AppVersion`n`nDeveloped by IT Groceries Shop", "About", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null })
     $BLang.Add_Click({ if ($script:CurrentLang -eq "EN") { $script:CurrentLang = "TH" } else { $script:CurrentLang = "EN" }; Play-Sound "Click"; Update-Language })
     $BC.Add_Click({ Play-Sound "Click"; if(!$Silent){ Write-Host "`n [EXIT] Clean & Bye !!" -ForegroundColor Cyan }; [System.Windows.Forms.Application]::DoEvents(); Start-Sleep 1; if ($PSCommandPath -eq $TempScript) { Start-Process "cmd.exe" -ArgumentList "/c ping 127.0.0.1 -n 4 >nul & del `"$TempScript`"" -WindowStyle Hidden }; $Window.Close(); [Environment]::Exit(0) })
