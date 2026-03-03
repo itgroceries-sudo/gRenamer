@@ -75,7 +75,7 @@ if (-not $Silent -and -not $IsAdmin) {
         $SourcePath = if ($ScriptPath -and (Test-Path -LiteralPath $ScriptPath)) { $ScriptPath } elseif ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) { $PSCommandPath } else { $null }
         
         if ($SourcePath) {
-            Start-Process "cmd.exe" -ArgumentList "/c `"$SourcePath`"" -Verb RunAs
+            Start-Process "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$TempScript`"" -Verb RunAs
         } else {
             Write-Host "`n [INFO] Memory Execution Detected. Preparing Elevation..." -ForegroundColor Yellow
             $WebClient = New-Object System.Net.WebClient
