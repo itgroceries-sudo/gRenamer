@@ -4,14 +4,14 @@ chcp 65001 >nul
 mode con:cols=85 lines=20
 title gRenam Remover by IT Groceries Shop
 
-:: กุญแจสำคัญ: บังคับให้อ่านโค้ดด้วย UTF8 เสมอ ไม่ว่าไฟล์จะมี BOM หรือไม่มีก็ตาม ป้องกันภาษาไทยพัง!
+:: Force UTF8 encoding to prevent execution failure
 powershell -noprofile -c "$param='%*';$ScriptPath='%~f0';iex((Get-Content -LiteralPath '%~f0' -Encoding UTF8 -Raw))"
 exit /b
 #>
 
 # =========================================================
 #  GRENAM REMOVER ULTIMATE
-#  Version: 5.0 Build 04.03.2026 (The Redemption)
+#  Version: 5.0 Build 04.03.2026 (Final Release)
 #  Framework: IT Groceries Shop (Layout Master)
 # =========================================================
 
@@ -20,7 +20,7 @@ exit /b
 $AppVersion = "5.0 Build 04.03.2026"
 $InstallDir = "$env:LOCALAPPDATA\ITG_gRenamer"
 
-# ลิงก์ตรงสำหรับดาวน์โหลดตัวเองจาก GitHub (ต้องตรงกับชื่อไฟล์บนเว็บ)
+# GitHub Raw URL for remote execution and downloading
 $SelfURL    = "https://raw.githubusercontent.com/itgroceries-sudo/gRenamer/main/gRenamer.cmd"
 
 $LangDict = @{
@@ -53,7 +53,7 @@ try {
 } catch {}
 
 # ---------------------------------------------------------
-# [1] ELEVATION LOGIC (ระบบขอสิทธิ์ขั้นสุดยอด)
+# [1] ELEVATION LOGIC
 # ---------------------------------------------------------
 $Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $Principal = [Security.Principal.WindowsPrincipal]$Identity
@@ -75,7 +75,7 @@ if (-not $Silent -and -not $IsAdmin) {
         $SourcePath = if ($ScriptPath -and (Test-Path -LiteralPath $ScriptPath)) { $ScriptPath } elseif ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) { $PSCommandPath } else { $null }
         
         if ($SourcePath) {
-            Start-Process "cmd.exe" -ArgumentList "/c `"$TempScript`"" -Verb RunAs
+            Start-Process "cmd.exe" -ArgumentList "/c `"$SourcePath`"" -Verb RunAs
         } else {
             Write-Host "`n [INFO] Memory Execution Detected. Preparing Elevation..." -ForegroundColor Yellow
             $WebClient = New-Object System.Net.WebClient
@@ -96,7 +96,7 @@ if (-not $Silent -and -not $IsAdmin) {
 }
 
 # ---------------------------------------------------------
-# [2] MAIN EXECUTION BLOCK (ครอบ Try Catch ทั้งหมดกันหายวับ)
+# [2] MAIN EXECUTION BLOCK
 # ---------------------------------------------------------
 try {
     Add-Type -AssemblyName PresentationFramework, System.Windows.Forms, System.Drawing
@@ -161,7 +161,6 @@ try {
 
     if(!$Silent){ Write-Host " [INFO] Launching WPF GUI..." -ForegroundColor Yellow }
 
-    # XAML แบบจัดบรรทัดใหม่สวยงาม ป้องกันการตัดบรรทัดที่ทำให้ XML พัง
     $xamlStr = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStartupLocation="Manual" ResizeMode="NoResize" Background="#181818" WindowStyle="None" BorderBrush="#4CAF50" BorderThickness="2" FontFamily="Tahoma">
@@ -368,7 +367,7 @@ try {
     Update-Language; Update-StartButton
 
     # =========================================================
-    # ปรับปรุงปุ่ม SAVE: จำลองพฤติกรรม Notepad++ "UTF-8 with BOM" สมบูรณ์แบบ
+    # EXPORT SCRIPT (.CMD) LOGIC
     # =========================================================
     $BSave.Add_Click({
         Play-Sound "Click"
@@ -391,7 +390,7 @@ try {
                     $ScriptContent = $WebClient.DownloadString($SelfURL)
                 }
 
-                # ฝัง BOM ตามสูตรสำเร็จที่คุณเจทำใน Notepad++ ($True = ใส่ BOM)
+                # Write file using UTF-8 with BOM signature
                 $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
                 [System.IO.File]::WriteAllText($sfd.FileName, $ScriptContent, $Utf8WithBom)
                 
