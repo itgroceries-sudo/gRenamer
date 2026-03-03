@@ -12,7 +12,7 @@ exit /b
 # =========================================================
 #  GRENAM REMOVER ULTIMATE
 #  Version: 5.0 Build 04.03.2026 (The PS1 Transformation)
-#  Framework: IT Groceries Shop (Layout Master)
+#  Framework: IT Groceries Shop (Layout Master Fixed)
 # =========================================================
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
