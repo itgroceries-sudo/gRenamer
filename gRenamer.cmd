@@ -4,72 +4,41 @@ chcp 65001 >nul
 mode con:cols=85 lines=20
 title gRenam Remover by IT Groceries Shop
 
-powershell -noprofile -c "$param='%*';$ScriptPath='%~f0';iex((Get-Content('%~f0') -Raw))"
+:: กุญแจสำคัญ: บังคับให้อ่านโค้ดด้วย UTF8 เสมอ ไม่ว่าไฟล์จะมี BOM หรือไม่มีก็ตาม ป้องกันภาษาไทยพัง!
+powershell -noprofile -c "$param='%*';$ScriptPath='%~f0';iex((Get-Content -LiteralPath '%~f0' -Encoding UTF8 -Raw))"
 exit /b
 #>
 
 # =========================================================
 #  GRENAM REMOVER ULTIMATE
-#  Version: 3.0 Build 04.03.2026 (IEX/IRM Optimized)
+#  Version: 5.0 Build 04.03.2026 (The Redemption)
 #  Framework: IT Groceries Shop (Layout Master)
 # =========================================================
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
-$AppVersion = "3.0 Build 04.03.2026"
+$AppVersion = "5.0 Build 04.03.2026"
 $InstallDir = "$env:LOCALAPPDATA\ITG_gRenamer"
-$TempScript = "$env:TEMP\gRenamer_Temp.cmd"
-$SelfURL    = "https://raw.githubusercontent.com/itgroceries-sudo/gRenamer/main/gRenamer.cmd"
-$TargetFile = if ($ScriptPath) { $ScriptPath } elseif ($PSScriptRoot) { $PSCommandPath } else { $null }
 
-function Write-SafeTempScript {
-    param([string]$FilePath, [string]$Content)
-    [System.IO.File]::WriteAllText($FilePath, $Content, (New-Object System.Text.UTF8Encoding($True)))
-}
+# ลิงก์ตรงสำหรับดาวน์โหลดตัวเองจาก GitHub (ต้องตรงกับชื่อไฟล์บนเว็บ)
+$SelfURL    = "https://raw.githubusercontent.com/itgroceries-sudo/gRenamer/main/gRenamer.cmd"
 
 $LangDict = @{
     "EN" = @{ 
         "Title"="gRenam Remover"; "Dev"="Developed by IT Groceries Shop™ ♥ ♥ ♥"; 
         "Facebook"="Facebook"; "GitHub"="GitHub"; "About"="About"; "Exit"="EXIT"; 
         "Processing"="Scanning..."; "Finished"="Completed"; "Start"="START SCAN";
-        "LangLabel"="Language"; "Refresh"="REFRESH";
+        "LangLabel"="Language"; "Refresh"="REFRESH"; "SaveCMD"="SAVE .CMD";
         "AdvMode"="Advance Mode: Recover hidden orphaned files"
     }
     "TH" = @{ 
         "Title"="กำจัดไวรัส Grenam"; "Dev"="พัฒนาโดย IT Groceries Shop™ ♥ ♥ ♥"; 
         "Facebook"="Facebook"; "GitHub"="GitHub"; "About"="เกี่ยวกับ"; "Exit"="ออก"; 
         "Processing"="กำลังสแกน..."; "Finished"="เสร็จสิ้น"; "Start"="เริ่มการสแกน";
-        "LangLabel"="ภาษา"; "Refresh"="รีเฟรช";
+        "LangLabel"="ภาษา"; "Refresh"="รีเฟรช"; "SaveCMD"="สร้างไฟล์ .cmd";
         "AdvMode"="โหมดขั้นสูง: กู้คืนไฟล์ซ่อนที่ไม่มีตัวปลอม (Orphaned)"
     }
 }
-
-function Load-ScanTargets {
-    $IconSys = "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z"
-    $IconUSB = "M15,7V11H16V13H13V5L15,3V1H9V3L11,5V13H8V11H9V7H4V11H5V15L9,19V21H15V19L19,15V11H20V7H15Z"
-    $IconCus = "M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
-
-    $arr = @()
-    $arr += @{ ID="SYS"; Path="$env:SystemDrive\"; Icon=$IconSys; DescEN="Scan System Drive ($env:SystemDrive\)"; DescTH="สแกนไดรฟ์ระบบ ($env:SystemDrive\)" }
-
-    $drives = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Removable' -and $_.IsReady }
-    foreach ($d in $drives) {
-        $dl = $d.Name.Substring(0,2)
-        $vl = $d.VolumeLabel
-        $arr += @{ ID="USB_$dl"; Path="$dl\"; Icon=$IconUSB; DescEN="Scan USB Drive ($dl $vl)"; DescTH="สแกนแฟลชไดรฟ์ ($dl $vl)" }
-    }
-
-    $cusPath = ""
-    if ($Global:ScanTargets) {
-        $existingCUS = $Global:ScanTargets | Where-Object { $_.ID -eq "CUS" }
-        if ($existingCUS) { $cusPath = $existingCUS.Path }
-    }
-    $arr += @{ ID="CUS"; Path=$cusPath; Icon=$IconCus; DescEN="Select Custom Folder..."; DescTH="เลือกโฟลเดอร์ที่ต้องการสแกน..." }
-    
-    $Global:ScanTargets = $arr
-}
-
-Load-ScanTargets
 
 $SysRegion = (Get-Culture).TwoLetterISOLanguageName
 $script:CurrentLang = if ($SysRegion -eq "th") { "TH" } else { "EN" }
@@ -83,6 +52,9 @@ try {
     $ConsoleHandle = [Win32.User32]::GetConsoleWindow()
 } catch {}
 
+# ---------------------------------------------------------
+# [1] ELEVATION LOGIC (ระบบขอสิทธิ์ขั้นสุดยอด)
+# ---------------------------------------------------------
 $Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $Principal = [Security.Principal.WindowsPrincipal]$Identity
 $IsAdmin = $Principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -93,136 +65,189 @@ if (-not $Silent -and -not $IsAdmin) {
 
     $host.UI.RawUI.BackgroundColor = "DarkBlue"; $host.UI.RawUI.ForegroundColor = "White"; Clear-Host
     Write-Host "`n====================================================================================" -ForegroundColor DarkGray
-    Write-Host "                    gRenam Remover [ Cloud Edition ]                              " -ForegroundColor Cyan -BackgroundColor DarkBlue
+    Write-Host "                    gRenam Remover [ Cloud Edition ]                                " -ForegroundColor Cyan -BackgroundColor DarkBlue
     Write-Host "                         Powered by IT Groceries Shop                               " -ForegroundColor DarkCyan -BackgroundColor DarkBlue
     Write-Host "====================================================================================" -ForegroundColor DarkGray
     Write-Host ""; Write-Host "         [ PERMISSION CHECK ] Press Enter, then click 'Yes' to continue: " -NoNewline -ForegroundColor White
     $null = Read-Host
     
-    $ArgStr = ""
     try {
-        if ($TargetFile -and (Test-Path $TargetFile)) {
-            if ($TargetFile -match '\.(cmd|bat)$') { Start-Process -FilePath "$TargetFile" -Verb RunAs }
-            else { Start-Process "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$TargetFile`"" -Verb RunAs }
+        $SourcePath = if ($ScriptPath -and (Test-Path -LiteralPath $ScriptPath)) { $ScriptPath } elseif ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) { $PSCommandPath } else { $null }
+        
+        if ($SourcePath) {
+            Start-Process "cmd.exe" -ArgumentList "/c `"$SourcePath`"" -Verb RunAs
         } else {
-            Write-Host "`n [INFO] Memory Execution Detected. Downloading to disk..." -ForegroundColor Yellow
-            $WebClient = New-Object System.Net.WebClient; $WebClient.Encoding = [System.Text.Encoding]::UTF8
+            Write-Host "`n [INFO] Memory Execution Detected. Preparing Elevation..." -ForegroundColor Yellow
+            $WebClient = New-Object System.Net.WebClient
+            $WebClient.Encoding = [System.Text.Encoding]::UTF8
             $ScriptContent = $WebClient.DownloadString($SelfURL)
+            
+            $TempScript = "$env:TEMP\gRenamer_Elevate.cmd"
             $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
             [System.IO.File]::WriteAllText($TempScript, $ScriptContent, $Utf8WithBom)
-            Start-Process "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$TempScript`"" -Verb RunAs
+            
+            Start-Process "cmd.exe" -ArgumentList "/c `"$TempScript`"" -Verb RunAs
         }
-    } catch { Write-Host "`n [ERROR] Failed to elevate: $_" -ForegroundColor Red; Read-Host }
+    } catch { 
+        Write-Host "`n [ERROR] Failed to elevate: $_" -ForegroundColor Red
+        Start-Sleep 5
+    }
     exit 
 }
 
-Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
-$Graphics = [System.Drawing.Graphics]::FromHwnd([IntPtr]::Zero); $Scale = $Graphics.DpiX / 96.0; $Graphics.Dispose()
+# ---------------------------------------------------------
+# [2] MAIN EXECUTION BLOCK (ครอบ Try Catch ทั้งหมดกันหายวับ)
+# ---------------------------------------------------------
+try {
+    Add-Type -AssemblyName PresentationFramework, System.Windows.Forms, System.Drawing
+    $Graphics = [System.Drawing.Graphics]::FromHwnd([IntPtr]::Zero); $Scale = $Graphics.DpiX / 96.0; $Graphics.Dispose()
 
-$BaseW = 600; $BaseH = 750 
-$ConsoleW_Px = [int]($BaseW * $Scale); $ConsoleH_Px = [int]($BaseH * $Scale)
-$Scr = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+    $BaseW = 600; $BaseH = 750 
+    $ConsoleW_Px = [int]($BaseW * $Scale); $ConsoleH_Px = [int]($BaseH * $Scale)
+    $Scr = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+    $StartX_Px = ($Scr.Width - $ConsoleW_Px * 2) / 2; $StartY_Px = ($Scr.Height - $ConsoleH_Px) / 2
+    $WindowX_WPF = ($StartX_Px + $ConsoleW_Px) / $Scale; $WindowY_WPF = $StartY_Px / $Scale
 
-$TotalWidth_Px = $ConsoleW_Px * 2; $StartX_Px = ($Scr.Width - $TotalWidth_Px) / 2; $StartY_Px = ($Scr.Height - $ConsoleH_Px) / 2
-$WindowX_WPF = ($StartX_Px + $ConsoleW_Px) / $Scale; $WindowY_WPF = $StartY_Px / $Scale
+    if (-not (Test-Path $InstallDir)) { New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null }
+    $ConsoleIcon = "$InstallDir\ConsoleIcon.ico"
+    if (-not (Test-Path $ConsoleIcon) -or (Get-Item $ConsoleIcon).Length -lt 100) {
+        try { (New-Object Net.WebClient).DownloadFile("https://itgroceries.blogspot.com/favicon.ico", $ConsoleIcon) } catch {}
+    }
 
-if (-not (Test-Path $InstallDir)) { New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null }
-
-$ConsoleIcon = "$InstallDir\ConsoleIcon.ico"
-if (-not (Test-Path $ConsoleIcon) -or (Get-Item $ConsoleIcon).Length -lt 100) {
-    try { (New-Object Net.WebClient).DownloadFile("https://itgroceries.blogspot.com/favicon.ico", $ConsoleIcon) } catch {}
-}
-
-if ($Silent) { if ($ConsoleHandle) { [Win32.User32]::ShowWindow($ConsoleHandle, 0) | Out-Null } } else {
-    try { $host.UI.RawUI.BufferSize = New-Object System.Management.Automation.Host.Size(85, 9999) } catch {}
-    if ($ConsoleHandle) { 
-        [Win32.User32]::ShowWindow($ConsoleHandle, 5) | Out-Null
-        [Win32.User32]::SetWindowPos($ConsoleHandle, [IntPtr]0, [int]$StartX_Px, [int]$StartY_Px, [int]$ConsoleW_Px, [int]$ConsoleH_Px, 0x0040) | Out-Null
-        
-        if (Test-Path $ConsoleIcon) {
-            $h = [Win32.User32]::LoadImage([IntPtr]::Zero, $ConsoleIcon, 1, 0, 0, 0x10)
-            if ($h) {
-                [Win32.User32]::SendMessage($ConsoleHandle, 0x80, [IntPtr]0, $h) | Out-Null
-                [Win32.User32]::SendMessage($ConsoleHandle, 0x80, [IntPtr]1, $h) | Out-Null
+    if ($Silent) { if ($ConsoleHandle) { [Win32.User32]::ShowWindow($ConsoleHandle, 0) | Out-Null } } else {
+        try { $host.UI.RawUI.BufferSize = New-Object System.Management.Automation.Host.Size(85, 9999) } catch {}
+        if ($ConsoleHandle) { 
+            [Win32.User32]::ShowWindow($ConsoleHandle, 5) | Out-Null
+            [Win32.User32]::SetWindowPos($ConsoleHandle, [IntPtr]0, [int]$StartX_Px, [int]$StartY_Px, [int]$ConsoleW_Px, [int]$ConsoleH_Px, 0x0040) | Out-Null
+            if (Test-Path $ConsoleIcon) {
+                $h = [Win32.User32]::LoadImage([IntPtr]::Zero, $ConsoleIcon, 1, 0, 0, 0x10)
+                if ($h) {
+                    [Win32.User32]::SendMessage($ConsoleHandle, 0x80, [IntPtr]0, $h) | Out-Null
+                    [Win32.User32]::SendMessage($ConsoleHandle, 0x80, [IntPtr]1, $h) | Out-Null
+                }
             }
         }
     }
-}
 
-if (!$Silent) {
     $host.UI.RawUI.BackgroundColor = "Black"; $host.UI.RawUI.ForegroundColor = "Gray"; Clear-Host
     Write-Host "`n==========================================" -ForegroundColor Green
-    Write-Host "   (V.3.0 Build 04.03.2026 : INIT)      " -ForegroundColor Green
+    Write-Host "   (V.5.0 Build 04.03.2026 : INIT)      " -ForegroundColor Green
     Write-Host "==========================================" -ForegroundColor Green
     Write-Host " [INFO] Loading Modules and Layout..." -ForegroundColor Green
-}
 
-function Play-Sound($Type) { try { switch ($Type) { "Click" { [System.Media.SystemSounds]::Beep.Play() } "Tick" { [System.Console]::Beep(2000, 20) } "Warn" { [System.Media.SystemSounds]::Hand.Play() } "Done" { [System.Media.SystemSounds]::Asterisk.Play() } } } catch {} }
+    function Play-Sound($Type) { try { switch ($Type) { "Click" { [System.Media.SystemSounds]::Beep.Play() } "Tick" { [System.Console]::Beep(2000, 20) } "Warn" { [System.Media.SystemSounds]::Hand.Play() } "Done" { [System.Media.SystemSounds]::Asterisk.Play() } } } catch {} }
 
-try {
+    function Load-ScanTargets {
+        $IconSys = "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z"
+        $IconUSB = "M15,7V11H16V13H13V5L15,3V1H9V3L11,5V13H8V11H9V7H4V11H5V15L9,19V21H15V19L19,15V11H20V7H15Z"
+        $IconCus = "M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
+        $arr = @()
+        $arr += @{ ID="SYS"; Path="$env:SystemDrive\"; Icon=$IconSys; DescEN="Scan System Drive ($env:SystemDrive\)"; DescTH="สแกนไดรฟ์ระบบ ($env:SystemDrive\)" }
+        $drives = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Removable' -and $_.IsReady }
+        foreach ($d in $drives) {
+            $dl = $d.Name.Substring(0,2); $vl = $d.VolumeLabel
+            $arr += @{ ID="USB_$dl"; Path="$dl\"; Icon=$IconUSB; DescEN="Scan USB Drive ($dl $vl)"; DescTH="สแกนแฟลชไดรฟ์ ($dl $vl)" }
+        }
+        $cusPath = ""
+        if ($Global:ScanTargets) {
+            $existingCUS = $Global:ScanTargets | Where-Object { $_.ID -eq "CUS" }
+            if ($existingCUS) { $cusPath = $existingCUS.Path }
+        }
+        $arr += @{ ID="CUS"; Path=$cusPath; Icon=$IconCus; DescEN="Select Custom Folder..."; DescTH="เลือกโฟลเดอร์ที่ต้องการสแกน..." }
+        $Global:ScanTargets = $arr
+    }
+
+    Load-ScanTargets
+
     if(!$Silent){ Write-Host " [INFO] Launching WPF GUI..." -ForegroundColor Yellow }
 
-    [xml]$xaml = '<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStartupLocation="Manual" ResizeMode="NoResize" Background="#181818" WindowStyle="None" BorderBrush="#4CAF50" BorderThickness="2" FontFamily="Tahoma">
+    # XAML แบบจัดบรรทัดใหม่สวยงาม ป้องกันการตัดบรรทัดที่ทำให้ XML พัง
+    $xamlStr = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStartupLocation="Manual" ResizeMode="NoResize" Background="#181818" WindowStyle="None" BorderBrush="#4CAF50" BorderThickness="2" FontFamily="Tahoma">
     <Window.Resources>
         <Style x:Key="BlueSwitch" TargetType="{x:Type CheckBox}">
-            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="{x:Type CheckBox}"><Border x:Name="T" Width="44" Height="24" Background="#3E3E3E" CornerRadius="22" Cursor="Hand"><Border x:Name="D" Width="20" Height="20" Background="White" CornerRadius="20" HorizontalAlignment="Left" Margin="2,0,0,0"><Border.RenderTransform><TranslateTransform x:Name="Tr" X="0"/></Border.RenderTransform></Border></Border><ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Trigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="Tr" Storyboard.TargetProperty="X" To="20" Duration="0:0:0.2"/><ColorAnimation Storyboard.TargetName="T" Storyboard.TargetProperty="Background.Color" To="#4CAF50" Duration="0:0:0.2"/></Storyboard></BeginStoryboard></Trigger.EnterActions><Trigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="Tr" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.2"/><ColorAnimation Storyboard.TargetName="T" Storyboard.TargetProperty="Background.Color" To="#3E3E3E" Duration="0:0:0.2"/></Storyboard></BeginStoryboard></Trigger.ExitActions></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type CheckBox}">
+                        <Border x:Name="T" Width="44" Height="24" Background="#3E3E3E" CornerRadius="22" Cursor="Hand">
+                            <Border x:Name="D" Width="20" Height="20" Background="White" CornerRadius="20" HorizontalAlignment="Left" Margin="2,0,0,0">
+                                <Border.RenderTransform><TranslateTransform x:Name="Tr" X="0"/></Border.RenderTransform>
+                            </Border>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="Tr" Storyboard.TargetProperty="X" To="20" Duration="0:0:0.2"/><ColorAnimation Storyboard.TargetName="T" Storyboard.TargetProperty="Background.Color" To="#4CAF50" Duration="0:0:0.2"/></Storyboard></BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="Tr" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.2"/><ColorAnimation Storyboard.TargetName="T" Storyboard.TargetProperty="Background.Color" To="#3E3E3E" Duration="0:0:0.2"/></Storyboard></BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-        <Style x:Key="Btn" TargetType="Button"><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="22"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.FontWeight="Bold"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Opacity" Value="0.8"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
-        <Style x:Key="LabeledBtn" TargetType="Button"><Setter Property="Background" Value="#333333"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Height" Value="50"/><Setter Property="Margin" Value="0,0,5,0"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="5" Padding="15,0,15,0"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.FontWeight="Bold" TextElement.FontSize="16"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Opacity" Value="0.8"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+        <Style x:Key="Btn" TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="22">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.FontWeight="Bold"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Opacity" Value="0.8"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="LabeledBtn" TargetType="Button">
+            <Setter Property="Background" Value="#333333"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Height" Value="50"/><Setter Property="Margin" Value="0,0,5,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="5" Padding="15,0,15,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.FontWeight="Bold" TextElement.FontSize="16"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Opacity" Value="0.8"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     
     <Grid Margin="25">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="20"/><RowDefinition Height="*"/><RowDefinition Height="100"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="20"/><RowDefinition Height="*"/><RowDefinition Height="120"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <Viewbox Grid.Column="0" Width="70" Height="70" Margin="0,0,15,0">
-                <Path Fill="#4CAF50" Data="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,11.99H19C18.47,16.11 15.72,19.78 12,20.92V11.99H5V6.3L12,3.19M12,5.5A2.5,2.5 0 0,1 14.5,8A2.5,2.5 0 0,1 12,10.5A2.5,2.5 0 0,1 9.5,8A2.5,2.5 0 0,1 12,5.5Z"/>
-            </Viewbox>
+            <Viewbox Grid.Column="0" Width="70" Height="70" Margin="0,0,15,0"><Path Fill="#4CAF50" Data="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,11.99H19C18.47,16.11 15.72,19.78 12,20.92V11.99H5V6.3L12,3.19M12,5.5A2.5,2.5 0 0,1 14.5,8A2.5,2.5 0 0,1 12,10.5A2.5,2.5 0 0,1 9.5,8A2.5,2.5 0 0,1 12,5.5Z"/></Viewbox>
             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,0,0">
-                <TextBlock x:Name="T_Title" Text="gRenam Remover" Foreground="White" FontSize="26" FontWeight="Bold">
-                    <TextBlock.Effect><DropShadowEffect Color="#4CAF50" BlurRadius="15" Opacity="0.6"/></TextBlock.Effect>
-                </TextBlock>
-                <StackPanel Orientation="Horizontal" Margin="2,5,0,0">
-                    <TextBlock x:Name="T_Dev" Text="Developed by IT Groceries Shop" Foreground="#4CAF50" FontSize="14" FontWeight="Bold"/>
-                </StackPanel>
+                <TextBlock x:Name="T_Title" Text="gRenam Remover" Foreground="White" FontSize="26" FontWeight="Bold"><TextBlock.Effect><DropShadowEffect Color="#4CAF50" BlurRadius="15" Opacity="0.6"/></TextBlock.Effect></TextBlock>
+                <StackPanel Orientation="Horizontal" Margin="2,5,0,0"><TextBlock x:Name="T_Dev" Text="Developed by IT Groceries Shop" Foreground="#4CAF50" FontSize="14" FontWeight="Bold"/></StackPanel>
             </StackPanel>
             <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,0,0">
-                <Button x:Name="BFollow" Style="{StaticResource LabeledBtn}" Height="35" Background="#CC0000" Padding="10,0,10,0">
-                    <StackPanel Orientation="Horizontal">
-                        <Viewbox Width="18" Height="18" Margin="0,0,6,0">
-                            <Path Fill="White" Data="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                        </Viewbox>
-                        <TextBlock Text="Follow" Foreground="White" VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/>
-                    </StackPanel>
-                </Button>
+                <Button x:Name="BFollow" Style="{StaticResource LabeledBtn}" Height="35" Background="#CC0000" Padding="10,0,10,0"><StackPanel Orientation="Horizontal"><Viewbox Width="18" Height="18" Margin="0,0,6,0"><Path Fill="White" Data="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></Viewbox><TextBlock Text="Follow" Foreground="White" VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/></StackPanel></Button>
             </StackPanel>
         </Grid>
-        
-        <Border Grid.Row="2" Background="#1E1E1E" CornerRadius="5">
-            <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="List"/></ScrollViewer>
-        </Border>
+        <Border Grid.Row="2" Background="#1E1E1E" CornerRadius="5"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="List"/></ScrollViewer></Border>
         
         <Grid Grid.Row="3" Margin="0,15,0,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Button x:Name="BA" Content="START SCAN" Width="300" Height="48" Background="#2E7D32" Foreground="White" Style="{StaticResource Btn}" Margin="0,0,0,5" Cursor="Hand" FontSize="18"/>
-                <CheckBox x:Name="ChkAdv" Foreground="#FFCCCCCC" HorizontalAlignment="Center" Cursor="Hand" Margin="0,5,0,0">
-                    <TextBlock x:Name="T_Adv" Text="Advance Mode: Recover hidden orphaned files" FontSize="13" Margin="5,0,0,0" Padding="0,0,0,5"/>
-                </CheckBox>
-            </StackPanel>
-            
-            <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Button x:Name="BRefresh" Width="100" Height="48" Background="#1976D2" Foreground="White" Style="{StaticResource Btn}" Cursor="Hand">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Fill="White" Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="18" Height="18" Stretch="Uniform" Margin="0,0,5,0"/>
-                        <TextBlock x:Name="T_Refresh" Text="REFRESH" VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/>
-                    </StackPanel>
-                </Button>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button x:Name="BA" Content="START SCAN" Width="260" Height="50" Background="#2E7D32" Foreground="White" Style="{StaticResource Btn}" Cursor="Hand" FontSize="18" Margin="0,0,10,0"/>
+                    <Button x:Name="BSave" Content="SAVE .CMD" Width="100" Height="50" Background="#F57C00" Foreground="White" Style="{StaticResource Btn}" Cursor="Hand" FontSize="14" Margin="0,0,10,0"/>
+                    <Button x:Name="BRefresh" Width="100" Height="50" Background="#1976D2" Foreground="White" Style="{StaticResource Btn}" Cursor="Hand"><StackPanel Orientation="Horizontal"><Path Fill="White" Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="18" Height="18" Stretch="Uniform" Margin="0,0,5,0"/><TextBlock x:Name="T_Refresh" Text="REFRESH" VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/></StackPanel></Button>
+                </StackPanel>
+            </Grid>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
+                <CheckBox x:Name="ChkAdv" Foreground="#FFCCCCCC" Cursor="Hand"><TextBlock x:Name="T_Adv" Text="Advance Mode: Recover hidden orphaned files" FontSize="13" Margin="5,-2,0,0" Padding="0,0,0,5"/></CheckBox>
             </StackPanel>
         </Grid>
         
@@ -235,19 +260,21 @@ Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStart
                  <Button x:Name="BLang" Style="{StaticResource LabeledBtn}" Background="#444"><StackPanel Orientation="Horizontal"><Viewbox Width="26" Height="26" Margin="0,0,8,0"><Path Fill="White" Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></Viewbox><TextBlock x:Name="T_Lang" Text="TH / EN" Foreground="White" VerticalAlignment="Center"/></StackPanel></Button>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Grid.Column="2" HorizontalAlignment="Right">
-                <Button x:Name="BC" Content="EXIT" Width="100" Height="50" Background="#D32F2F" Foreground="White" Style="{StaticResource Btn}" Cursor="Hand" FontSize="16"/>
+                <Button x:Name="BC" Content="EXIT" Width="80" Height="50" Background="#D32F2F" Foreground="White" Style="{StaticResource Btn}" Cursor="Hand" FontSize="16"/>
             </StackPanel>
         </Grid>
     </Grid>
-</Window>'
+</Window>
+"@
 
-    $reader = (New-Object System.Xml.XmlNodeReader $xaml); $Window = [Windows.Markup.XamlReader]::Load($reader)
+    $reader = (New-Object System.Xml.XmlNodeReader ([xml]$xamlStr))
+    $Window = [Windows.Markup.XamlReader]::Load($reader)
     try { $Window.Left = $WindowX_WPF; $Window.Top = $WindowY_WPF } catch {}
 
     $Stack=$Window.FindName("List"); $BA=$Window.FindName("BA"); $BC=$Window.FindName("BC"); 
     $BF=$Window.FindName("BF"); $BG=$Window.FindName("BG"); $BAbt=$Window.FindName("BAbt"); 
     $BLang=$Window.FindName("BLang"); $BFollow=$Window.FindName("BFollow"); $BRefresh=$Window.FindName("BRefresh")
-    $ChkAdv=$Window.FindName("ChkAdv"); $T_Adv=$Window.FindName("T_Adv")
+    $ChkAdv=$Window.FindName("ChkAdv"); $T_Adv=$Window.FindName("T_Adv"); $BSave=$Window.FindName("BSave")
 
     $script:CurrentVal = "SYS"
 
@@ -275,7 +302,6 @@ Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStart
         $bc = New-Object System.Windows.Media.BrushConverter
         foreach ($m in $Global:ScanTargets) {
             $Row = New-Object System.Windows.Controls.Grid; $Row.Height = 42; $Row.Margin = "0,1,0,1"
-            
             $col1 = New-Object System.Windows.Controls.ColumnDefinition; $col1.Width = [System.Windows.GridLength]::Auto
             $col2 = New-Object System.Windows.Controls.ColumnDefinition; $col2.Width = New-Object System.Windows.GridLength(1, [System.Windows.GridUnitType]::Star)
             $col3 = New-Object System.Windows.Controls.ColumnDefinition; $col3.Width = [System.Windows.GridLength]::Auto
@@ -316,18 +342,11 @@ Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStart
                     if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                         $target = $Global:ScanTargets | Where-Object { $_.ID -eq "CUS" }
                         $target.Path = $dialog.SelectedPath
-                        Render-ModeList
-                        Set-RadioLogic "CUS"
-                    } else {
-                        Set-RadioLogic "SYS"
-                    }
-                } else {
-                    Set-RadioLogic $sender.Tag
-                }
+                        Render-ModeList; Set-RadioLogic "CUS"
+                    } else { Set-RadioLogic "SYS" }
+                } else { Set-RadioLogic $sender.Tag }
             }
-
-            $Chk.Add_Click($ClickAction)
-            $Bor.Add_MouseLeftButtonUp($ClickAction)
+            $Chk.Add_Click($ClickAction); $Bor.Add_MouseLeftButtonUp($ClickAction)
         }
     }
 
@@ -337,7 +356,7 @@ Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStart
         $Window.FindName("T_FB").Text = $D["Facebook"]; $Window.FindName("T_Git").Text = $D["GitHub"]
         $Window.FindName("T_Abt").Text = $D["About"]; $BC.Content = $D["Exit"]; $BA.Content = $D["Start"]
         $Window.FindName("T_Refresh").Text = $D["Refresh"]; $T_Adv.Text = $D["AdvMode"]
-        $Window.FindName("T_Lang").Text = $D["LangLabel"]
+        $Window.FindName("T_Lang").Text = $D["LangLabel"]; $BSave.Content = $D["SaveCMD"]
         Render-ModeList
     }
 
@@ -348,15 +367,45 @@ Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStart
 
     Update-Language; Update-StartButton
 
-    $BRefresh.Add_Click({
+    # =========================================================
+    # ปรับปรุงปุ่ม SAVE: จำลองพฤติกรรม Notepad++ "UTF-8 with BOM" สมบูรณ์แบบ
+    # =========================================================
+    $BSave.Add_Click({
         Play-Sound "Click"
-        Load-ScanTargets
+        $sfd = New-Object System.Windows.Forms.SaveFileDialog
+        $sfd.Filter = "Command Script (*.cmd)|*.cmd"
+        $sfd.FileName = "gRenam_Remover_V5.cmd"
+        $sfd.Title = "Save Offline Version"
         
-        $stillExists = $Global:ScanTargets | Where-Object { $_.ID -eq $script:CurrentVal }
-        if (-not $stillExists) {
-            $script:CurrentVal = "SYS"
+        if ($sfd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            try {
+                $SourcePath = if ($ScriptPath -and (Test-Path -LiteralPath $ScriptPath)) { $ScriptPath }
+                              elseif ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) { $PSCommandPath }
+                              else { $null }
+
+                if ($SourcePath) {
+                    $ScriptContent = Get-Content -LiteralPath $SourcePath -Encoding UTF8 -Raw
+                } else {
+                    $WebClient = New-Object System.Net.WebClient
+                    $WebClient.Encoding = [System.Text.Encoding]::UTF8
+                    $ScriptContent = $WebClient.DownloadString($SelfURL)
+                }
+
+                # ฝัง BOM ตามสูตรสำเร็จที่คุณเจทำใน Notepad++ ($True = ใส่ BOM)
+                $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
+                [System.IO.File]::WriteAllText($sfd.FileName, $ScriptContent, $Utf8WithBom)
+                
+                [System.Windows.MessageBox]::Show("Offline file successfully generated at:`n" + $sfd.FileName, "Success", 0, 64) | Out-Null
+            } catch {
+                [System.Windows.MessageBox]::Show("Failed to save file: $_", "Error", 0, 16) | Out-Null
+            }
         }
-        
+    })
+
+    $BRefresh.Add_Click({
+        Play-Sound "Click"; Load-ScanTargets
+        $stillExists = $Global:ScanTargets | Where-Object { $_.ID -eq $script:CurrentVal }
+        if (-not $stillExists) { $script:CurrentVal = "SYS" }
         Render-ModeList
         if(!$Silent){ Write-Host "`n [INFO] Drive List Refreshed." -ForegroundColor Yellow }
     })
@@ -373,9 +422,7 @@ Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStart
         $Sel = @($Stack.Children | Where-Object { $_.Child.Children[2].IsChecked })
         if ($Sel.Count -eq 0) { return }
         
-        $BA.IsEnabled = $false
-        $BA.Content = $LangDict[$script:CurrentLang]["Processing"]
-        
+        $BA.IsEnabled = $false; $BA.Content = $LangDict[$script:CurrentLang]["Processing"]
         $SelectedID = $Sel[0].Tag
         $TargetObj = $Global:ScanTargets | Where-Object { $_.ID -eq $SelectedID }
         $TargetPath = $TargetObj.Path
@@ -397,89 +444,40 @@ Title="gRenam Remover by IT Groceries Shop" Height="750" Width="650" WindowStart
             } else {
                 foreach ($hiddenFile in $files) {
                     if ($hiddenFile.PSIsContainer) { continue }
-                    
                     $hiddenName = $hiddenFile.Name
                     if ($hiddenName[0] -cne 'g') { continue }
-                    
                     $realNameClean = $hiddenName.Substring(1)
                     if ([string]::IsNullOrEmpty($realNameClean)) { continue }
-                    
                     $virusFullPath = Join-Path -Path $hiddenFile.DirectoryName -ChildPath $realNameClean
                     $isHidden = (($hiddenFile.Attributes -band [System.IO.FileAttributes]::Hidden) -eq [System.IO.FileAttributes]::Hidden)
                     
                     if ($IsAdvance) {
                         if ($isHidden) {
-                            if(!$Silent){ 
-                                Write-Host "`n [ADVANCE RECOVERY] Location: $($hiddenFile.DirectoryName)" -ForegroundColor Magenta
-                                Write-Host "    -> Hidden Orphan : $hiddenName" -ForegroundColor Gray
-                            }
-
-                            if (Test-Path $virusFullPath) {
-                                Remove-Item -Path $virusFullPath -Force -ErrorAction SilentlyContinue
-                                if(!$Silent){ Write-Host "    -> [DELETE] Fake Virus File Removed." -ForegroundColor Green }
-                            }
-
-                            $hiddenFile.Attributes = $hiddenFile.Attributes -band -bnot [System.IO.FileAttributes]::Hidden
-                            $hiddenFile.Attributes = $hiddenFile.Attributes -band -bnot [System.IO.FileAttributes]::System
-                            $hiddenFile.Attributes = $hiddenFile.Attributes -band -bnot [System.IO.FileAttributes]::ReadOnly
-                            if(!$Silent){ Write-Host "    -> [UNHIDE] Attributes Cleared." -ForegroundColor Green }
-
+                            if(!$Silent){ Write-Host "`n [ADVANCE] Location: $($hiddenFile.DirectoryName)`n    -> Hidden Orphan : $hiddenName" -ForegroundColor Magenta }
+                            if (Test-Path $virusFullPath) { Remove-Item -Path $virusFullPath -Force -ErrorAction SilentlyContinue; if(!$Silent){ Write-Host "    -> [DELETE] Fake Virus Removed." -ForegroundColor Green } }
+                            $hiddenFile.Attributes = $hiddenFile.Attributes -band -bnot [System.IO.FileAttributes]::Hidden -band -bnot [System.IO.FileAttributes]::System -band -bnot [System.IO.FileAttributes]::ReadOnly
                             Rename-Item -Path $hiddenFile.FullName -NewName $realNameClean -Force -ErrorAction SilentlyContinue
-                            
-                            if (Test-Path $virusFullPath) {
-                                if(!$Silent){ Write-Host "    -> [RESTORE] SUCCESS" -ForegroundColor Cyan }
-                                $foundCount++
-                            } else {
-                                if(!$Silent){ Write-Host "    -> [RESTORE] FAILED" -ForegroundColor Red }
-                            }
+                            if (Test-Path $virusFullPath) { if(!$Silent){ Write-Host "    -> [RESTORE] SUCCESS" -ForegroundColor Cyan }; $foundCount++ }
                         }
                     } else {
                         if (Test-Path $virusFullPath) {
-                            if(!$Silent){ 
-                                Write-Host "`n [MATCH] Location: $($hiddenFile.DirectoryName)" -ForegroundColor Yellow
-                                Write-Host "    -> Hidden File : $hiddenName" -ForegroundColor Gray
-                                Write-Host "    -> Virus File  : $realNameClean" -ForegroundColor Gray
-                            }
-
+                            if(!$Silent){ Write-Host "`n [MATCH] Location: $($hiddenFile.DirectoryName)`n    -> Hidden File : $hiddenName`n    -> Virus File  : $realNameClean" -ForegroundColor Yellow }
                             Remove-Item -Path $virusFullPath -Force -ErrorAction SilentlyContinue
-                            if(!$Silent){ Write-Host "    -> [DELETE] Fake Virus File Removed." -ForegroundColor Green }
-
-                            $hiddenFile.Attributes = $hiddenFile.Attributes -band -bnot [System.IO.FileAttributes]::Hidden
-                            $hiddenFile.Attributes = $hiddenFile.Attributes -band -bnot [System.IO.FileAttributes]::System
-                            $hiddenFile.Attributes = $hiddenFile.Attributes -band -bnot [System.IO.FileAttributes]::ReadOnly
-                            if(!$Silent){ Write-Host "    -> [UNHIDE] Attributes Cleared." -ForegroundColor Green }
-
+                            if(!$Silent){ Write-Host "    -> [DELETE] Fake Virus Removed." -ForegroundColor Green }
+                            $hiddenFile.Attributes = $hiddenFile.Attributes -band -bnot [System.IO.FileAttributes]::Hidden -band -bnot [System.IO.FileAttributes]::System -band -bnot [System.IO.FileAttributes]::ReadOnly
                             Rename-Item -Path $hiddenFile.FullName -NewName $realNameClean -Force -ErrorAction SilentlyContinue
-                            
-                            if (Test-Path $virusFullPath) {
-                                if(!$Silent){ Write-Host "    -> [RESTORE] SUCCESS" -ForegroundColor Cyan }
-                                $foundCount++
-                            } else {
-                                if(!$Silent){ Write-Host "    -> [RESTORE] FAILED" -ForegroundColor Red }
-                            }
+                            if (Test-Path $virusFullPath) { if(!$Silent){ Write-Host "    -> [RESTORE] SUCCESS" -ForegroundColor Cyan }; $foundCount++ }
                         }
                     }
                 }
             }
-            if(!$Silent){ 
-                Write-Host "========================================================" -ForegroundColor Cyan
-                Write-Host " [DONE] Scan finished. Total fixed: $foundCount item(s)." -ForegroundColor White
-                Write-Host "========================================================" -ForegroundColor Cyan
-            }
-            
-        } catch {
-            if(!$Silent){ Write-Host " [ERROR] $_" -ForegroundColor Red }
-        }
+            if(!$Silent){ Write-Host "========================================================`n [DONE] Scan finished. Total fixed: $foundCount item(s).`n========================================================" -ForegroundColor White }
+        } catch { if(!$Silent){ Write-Host " [ERROR] $_" -ForegroundColor Red } }
 
-        $BA.Content = $LangDict[$script:CurrentLang]["Finished"]
-        Play-Sound "Done"
-        Start-Sleep 2
-        $BA.IsEnabled = $true
-        $BA.Content = $LangDict[$script:CurrentLang]["Start"]
+        $BA.Content = $LangDict[$script:CurrentLang]["Finished"]; Play-Sound "Done"; Start-Sleep 2
+        $BA.IsEnabled = $true; $BA.Content = $LangDict[$script:CurrentLang]["Start"]
     })
-    
     $Window.ShowDialog() | Out-Null
-
 } catch {
     Write-Host "`n [FATAL ERROR] The application crashed:" -ForegroundColor Red
     Write-Host " $_" -ForegroundColor Red
