@@ -96,6 +96,7 @@ if (-not $IsAdmin) {
         Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"& { $ScriptContent }`"" -Verb RunAs
     } catch {
         Write-Host " [ERROR] Failed to elevate: $_" -ForegroundColor Red
+        Start-Sleep 3
     }
     exit 
 }
