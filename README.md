@@ -5,7 +5,7 @@
 [![Facebook](https://img.shields.io/badge/Facebook-Follow-blue?style=for-the-badge&logo=facebook)](https://www.facebook.com/Adm1n1straTOE)
 
 ---
-# #ตำนานที่ยังมีลมหายใจ_______(ตัวแก้)_______#ไวรัสเปลี่ยนชื่อไฟล์ 
+# #ตำนานที่ยังมีลมหายใจ____(ตัวแก้)____#ไวรัสเปลี่ยนชื่อไฟล์ 
 <img width="1242" height="750" alt="image" src="https://github.com/user-attachments/assets/af93963b-e81e-4caf-bee2-37aefac9eebf" />
 
 ---
